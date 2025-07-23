@@ -1,4 +1,6 @@
 import cityCouncilMap from '@/data/cityCouncilMap.json'
+require('dotenv').config
+//console.log(process.env)
 
 export async function GET(request) {
     const {searchParams} = new URL(request.url)
@@ -12,7 +14,7 @@ export async function GET(request) {
     }
 
     const geoRes = await fetch(`https://api.zippopotam.us/us/${zip}`);
-    console.log("Zippopotam.us status:", geoRes.status);
+    //console.log("Zippopotam.us status:", geoRes.status);
 
     if (!geoRes.ok) {
       console.log("Zippopotam API failed for ZIP:", zip);
@@ -21,26 +23,25 @@ export async function GET(request) {
 
     const geoData = await geoRes.json();
     const place = geoData.places?.[0];
-    console.log(geoData)
+    //console.log(geoData)
     const city = place["place name"];
     const state = place["state"];
 
-    // const wikiRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${city},_${state}`);
-    // const wikiData = await wikiRes.json();
-    // const fun_fact = wikiData.extract
-
-    const cityKey = `${city}, ${state}`
-    const councilInfo = cityCouncilMap[cityKey]
-    if (!councilInfo) {
-
-
-        // return Response.json({ error: 'City not supported' }, { status: 404 });
+    const response = await fetch(
+        `https://www.googleapis.com/customsearch/v1?key=
+        ${process.env.G_Search_Key}&cx=017576662512468239146:omuauf_lfve&
+        q=${city}%20${state}%20city%20council%20agenda`)
+    
+    const data = await response.json()
+    for(var i = 0; i<data.items.length; i++){
+        
     }
+
+
 
     return Response.json({
         city,
         state,
-        //fact: fun_fact || 'No fun fact available',
         councilInfo
     });
    
