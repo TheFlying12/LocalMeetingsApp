@@ -14,7 +14,8 @@ export default function HomePage() {
 
   return (
     <main className="p-6">
-      <h1 className="text-2xl mb-4">Address ReverseGeocode</h1>
+      <center>
+      <h1 className="text-2xl mb-4">Find Your Local Council Meetings!</h1>
       <input
         type="text"
         value={zip}
@@ -31,6 +32,7 @@ export default function HomePage() {
           <p>🗺️ State: {info.state}</p>
         </div>
       )}
+      </center>
     </main>
   );
 }
