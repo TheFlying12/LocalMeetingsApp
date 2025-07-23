@@ -7,9 +7,9 @@ export default function HomePage() {
 
 
   const handleLookup = async () => {
-    const res = await fetch(`/api/lookup?zip=${zip}`);
-    const data = await res.json();
-    setInfo(data);
+  const res = await fetch(`/api/lookup?zip=${zip}`);
+  const data = await res.json();
+  setInfo(data);
   };
 
   return (
