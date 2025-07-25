@@ -21,8 +21,7 @@ export default function HomePage() {
         value={zip}
         onChange={(e) => setZip(e.target.value)}
         placeholder="Enter ZIP code"
-        className="border p-2 mr-2"
-      />
+        className="border p-2 mr-2"/>
       <button onClick={handleLookup} className="bg-blue-500 text-white p-2 rounded">
         Lookup
       </button>

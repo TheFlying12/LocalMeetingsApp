@@ -1,22 +1,29 @@
 import OpenAI from 'openai'
-const client = new OpenAI();
+const client = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
+});
 
-require('dotenv').config
-//console.log(process.env)
+require('dotenv').config();
 
 export async function GET(request) {
     const {searchParams} = new URL(request.url)
     const zip = searchParams.get('zip');
 
-    console.log("ZIP received:", zip);
+    //console.log("ZIP received:", zip);
 
-    if (!zip || zip.length < 5) {
+    if (!zip || zip.length != 5) {
       console.log("Invalid ZIP format");
       return Response.json({ error: 'Invalid ZIP format' }, { status: 400 });
     }
-
-    const geoRes = await fetch(`https://api.zippopotam.us/us/${zip}`);
-    console.log("Zippopotam.us status:", geoRes.status);
+    var geoRes = null
+    try{
+        geoRes = await fetch(`https://api.zippopotam.us/us/${zip}`);
+    }
+    catch(e){
+        console.log("failed at zippopotam ZIP request")
+        console.error(e)
+    }
+    //console.log("Zippopotam.us status:", geoRes.status);
 
     if (!geoRes.ok) {
       console.log("Zippopotam API failed for ZIP:", zip);
@@ -28,17 +35,24 @@ export async function GET(request) {
     //console.log(geoData)
     const city = place["place name"];
     const state = place["state"];
-
-    const response = await fetch(
-        `https://www.googleapis.com/customsearch/v1?key=
-        ${process.env.G_Search_Key}&cx=017576662512468239146:omuauf_lfve&
-        q=${city}%20${state}%20city%20council%20agenda`)
     
-    const data = await response.json()
-    let urlList = Array()
-    for(var i = 0; i<6 ; i++){
-        urlList.push(data.items[i].link)
+    console.log("city: ", city)
+
+    var response = null
+    
+    try{
+        response = await fetch(`https://www.googleapis.com/customsearch/v1?key=${process.env.G_SEARCH_KEY}&cx=${process.env.g_cx_id}=${city}+${state}+city+council+agenda`)
     }
+    catch(e){
+        console.log("failed at google search API")
+        console.error(e)
+    }    
+
+    console.log(response)
+
+    const data = await response.json()
+
+    console.log(data)
 
     const systemPrompt = 'Based on the list of URLs provided, select the best one to get meeting schedules and agendas'
     const openaiRes = await client.chat.completions.create({
@@ -51,7 +65,6 @@ export async function GET(request) {
     });
     
     const bestUrl = JSON.parse(openaiRes.choices[0].message.content).selected_url;
-
 
     return Response.json({
         city,
