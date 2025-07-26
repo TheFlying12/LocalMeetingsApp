@@ -18,9 +18,15 @@ export default function HomePage() {
       <h1 className="text-2xl mb-4">Find Your Local Council Meetings!</h1>
       <input
         type="text"
-        value={zip}
+        value={city}
         onChange={(e) => setZip(e.target.value)}
-        placeholder="Enter ZIP code"
+        placeholder="Enter CITY name"
+        className="border p-2 mr-2"/>
+      <input
+        type="text"
+        value={city}
+        onChange={(e) => setZip(e.target.value)}
+        placeholder="Enter CITY name"
         className="border p-2 mr-2"/>
       <button onClick={handleLookup} className="bg-blue-500 text-white p-2 rounded">
         Lookup
