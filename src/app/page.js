@@ -2,12 +2,13 @@
 import { useState } from "react";
 
 export default function HomePage() {
-  const [zip, setZip] = useState("")
+  const [city, setCity] = useState("")
+  const [state, setState] = useState("")
   const [info, setInfo] = useState(null);
 
 
   const handleLookup = async () => {
-  const res = await fetch(`/api/lookup?zip=${zip}`);
+  const res = await fetch(`/api/lookup?city=${city}&state=${state}`);
   const data = await res.json();
   setInfo(data);
   };
@@ -19,24 +20,19 @@ export default function HomePage() {
       <input
         type="text"
         value={city}
-        onChange={(e) => setZip(e.target.value)}
+        onChange={(e) => setCity(e.target.value)}
         placeholder="Enter CITY name"
         className="border p-2 mr-2"/>
       <input
         type="text"
-        value={city}
-        onChange={(e) => setZip(e.target.value)}
-        placeholder="Enter CITY name"
+        value={state}
+        onChange={(e) => setState(e.target.value)}
+        placeholder="Enter STATE name"
         className="border p-2 mr-2"/>
       <button onClick={handleLookup} className="bg-blue-500 text-white p-2 rounded">
         Lookup
       </button>
-      {info && (
-        <div className="mt-4">
-          <p>📍 City: {info.city}</p>
-          <p>🗺️ State: {info.state}</p>
-        </div>
-      )}
+      
       </center>
     </main>
   );
