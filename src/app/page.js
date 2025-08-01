@@ -6,9 +6,12 @@ export default function HomePage() {
   const [state, setState] = useState("")
   const [info, setInfo] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [agendaData, setAgendaData] = useState(null);
+  const [scrapingAgenda, setScrapingAgenda] = useState(false);
 
   const handleLookup = async () => {
     setLoading(true);
+    setAgendaData(null); // Clear previous agenda data
     try {
       const res = await fetch(`/api/lookup?city=${city}&state=${state}`);
       const data = await res.json();
@@ -18,6 +21,26 @@ export default function HomePage() {
       setInfo({ error: 'Failed to fetch council information' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleScrapeAgenda = async (url) => {
+    setScrapingAgenda(true);
+    try {
+      const res = await fetch('/api/scrape-agenda', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+      setAgendaData(data);
+    } catch (error) {
+      console.error('Error scraping agenda:', error);
+      setAgendaData({ success: false, error: 'Failed to scrape agenda' });
+    } finally {
+      setScrapingAgenda(false);
     }
   };
 
@@ -102,14 +125,23 @@ export default function HomePage() {
               {info.councilInfo.meetingsPage && (
                 <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                   <h3 className="font-semibold text-purple-800 mb-2">Meetings & Agendas</h3>
-                  <a 
-                    href={info.councilInfo.meetingsPage} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-purple-600 hover:text-purple-800 underline break-all"
-                  >
-                    {info.councilInfo.meetingsPage}
-                  </a>
+                  <div className="flex items-center gap-3">
+                    <a 
+                      href={info.councilInfo.meetingsPage} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-purple-600 hover:text-purple-800 underline break-all"
+                    >
+                      {info.councilInfo.meetingsPage}
+                    </a>
+                    <button
+                      onClick={() => handleScrapeAgenda(info.councilInfo.meetingsPage)}
+                      disabled={scrapingAgenda}
+                      className="bg-purple-500 hover:bg-purple-600 disabled:bg-gray-400 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
+                    >
+                      {scrapingAgenda ? 'Scraping...' : 'View Details'}
+                    </button>
+                  </div>
                 </div>
               )}
               
@@ -130,6 +162,92 @@ export default function HomePage() {
           ) : (
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
               <p className="text-gray-600">No council information available.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Display Agenda Details */}
+      {agendaData && (
+        <div className="mt-6 bg-gray-50 rounded-lg shadow p-6 border border-gray-300">
+          <h3 className="text-xl font-semibold mb-4 text-gray-800">Meeting Agenda Details</h3>
+          
+          {agendaData.success ? (
+            <div className="space-y-4">
+              {agendaData.agenda.meetingDate && (
+                <div className="bg-blue-100 p-3 rounded">
+                  <strong>Date:</strong> {agendaData.agenda.meetingDate}
+                </div>
+              )}
+              
+              {agendaData.agenda.meetingTime && (
+                <div className="bg-blue-100 p-3 rounded">
+                  <strong>Time:</strong> {agendaData.agenda.meetingTime}
+                </div>
+              )}
+              
+              {agendaData.agenda.location && (
+                <div className="bg-blue-100 p-3 rounded">
+                  <strong>Location:</strong> {agendaData.agenda.location}
+                </div>
+              )}
+
+              {agendaData.agenda.summary && (
+                <div className="bg-green-100 p-3 rounded">
+                  <strong>Summary:</strong> {agendaData.agenda.summary}
+                </div>
+              )}
+
+              {agendaData.agenda.agendaItems && agendaData.agenda.agendaItems.length > 0 && (
+                <div>
+                  <h4 className="font-semibold text-gray-800 mb-2">Agenda Items:</h4>
+                  <div className="space-y-2">
+                    {agendaData.agenda.agendaItems.map((item, index) => (
+                      <div key={index} className="bg-white p-3 rounded border border-gray-200">
+                        <div className="flex items-start gap-2">
+                          {item.itemNumber && (
+                            <span className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-sm font-mono">
+                              {item.itemNumber}
+                            </span>
+                          )}
+                          <div className="flex-1">
+                            <h5 className="font-medium text-gray-800">{item.title}</h5>
+                            {item.description && (
+                              <p className="text-gray-600 text-sm mt-1">{item.description}</p>
+                            )}
+                            {item.type && (
+                              <span className="inline-block mt-1 bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                                {item.type}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {agendaData.agenda.publicComment && (
+                <div className="bg-yellow-100 p-3 rounded">
+                  <strong>Public Comment:</strong> {agendaData.agenda.publicComment}
+                </div>
+              )}
+
+              {agendaData.agenda.documents && agendaData.agenda.documents.length > 0 && (
+                <div>
+                  <strong>Documents:</strong>
+                  <ul className="list-disc list-inside mt-1 text-gray-700">
+                    {agendaData.agenda.documents.map((doc, index) => (
+                      <li key={index}>{doc}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-red-50 border border-red-200 rounded p-4">
+              <p className="text-red-700">Failed to scrape agenda: {agendaData.error}</p>
             </div>
           )}
         </div>
