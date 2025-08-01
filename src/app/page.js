@@ -17,6 +17,7 @@ export default function HomePage() {
       <center>
       <h1 className="text-2xl mb-4">Find Your Local Council Meetings!</h1>
       <h2 className="text-2xl mb-4">Soon you will just enter your city and state and BAM!</h2>
+      <h2 className="text-2xl mb-4">HOLY CIVIC EMPOWERMENT!!!!</h2>
       </center>
     </main>
   );
