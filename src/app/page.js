@@ -16,22 +16,7 @@ export default function HomePage() {
     <main className="p-6">
       <center>
       <h1 className="text-2xl mb-4">Find Your Local Council Meetings!</h1>
-      <input
-        type="text"
-        value={zip}
-        onChange={(e) => setZip(e.target.value)}
-        placeholder="Enter ZIP code"
-        className="border p-2 mr-2"
-      />
-      <button onClick={handleLookup} className="bg-blue-500 text-white p-2 rounded">
-        Lookup
-      </button>
-      {info && (
-        <div className="mt-4">
-          <p>📍 City: {info.city}</p>
-          <p>🗺️ State: {info.state}</p>
-        </div>
-      )}
+      <h2 className="text-2xl mb-4">Soon you will just enter your city and state and BAM!</h2>
       </center>
     </main>
   );
