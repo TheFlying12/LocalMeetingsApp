@@ -43,11 +43,16 @@ export class IntelligentScrapingService {
             const mainPageContent = await this.webScraper.scrapePageContent(baseUrl);
             const siteAnalysis = await this.analyzeSiteStructure(mainPageContent, baseUrl);
 
+            // Phase 2: Targeted scraping based on analysis
+            const targetUrls = this.getTargetUrls(siteAnalysis, baseUrl);
+            const scrapedPages = await this.webScraper.scrapeMultiplePages(targetUrls, 2);
+
+            // Phase 3: Look for PDFs and documents
+            const documentInfo = await this.findMeetingDocuments(scrapedPages, baseUrl);
 
             // Phase 4: Analyze any PDFs that were found
             let pdfAnalysis = null;
             if (documentInfo.pdfLinks && documentInfo.pdfLinks.length > 0) {
-                console.log('Analyzing found PDF documents...');
                 pdfAnalysis = await this.pdfAnalyzer.analyzePDFAgendas(documentInfo.pdfLinks);
             }
 
@@ -262,6 +267,47 @@ export class IntelligentScrapingService {
                 summary: "Could not automatically detect meeting documents"
             };
         }
+    }
+
+    /**
+     * Generate target URLs based on site analysis (simplified version)
+     */
+    getTargetUrls(siteAnalysis, baseUrl) {
+        const baseUrlObj = new URL(baseUrl);
+        const targetUrls = new Set([baseUrl]); // Always include main page
+
+        // Add AI-suggested paths if available
+        if (siteAnalysis.likelyMeetingPaths) {
+            siteAnalysis.likelyMeetingPaths.forEach(path => {
+                try {
+                    const fullUrl = new URL(path, baseUrlObj).href;
+                    targetUrls.add(fullUrl);
+                } catch (error) {
+                    // Skip invalid URLs
+                }
+            });
+        }
+
+        // Add common government page patterns
+        const commonPaths = [
+            '/government',
+            '/city-council', 
+            '/council',
+            '/meetings',
+            '/agendas',
+            '/calendar'
+        ];
+
+        commonPaths.forEach(path => {
+            try {
+                const fullUrl = new URL(path, baseUrlObj).href;
+                targetUrls.add(fullUrl);
+            } catch (error) {
+                // Skip invalid URLs
+            }
+        });
+
+        return Array.from(targetUrls).slice(0, 6); // Limit to 6 URLs for efficiency
     }
 
     /**
