@@ -69,31 +69,5 @@ export class GoogleSearchService {
         }
     }
 
-    /**
-     * Test the search configuration
-     * @returns {Promise<Object>} Test results
-     */
-    async testConfiguration() {
-        if (!this.apiKey || !this.cxId) {
-            return {
-                success: false,
-                error: 'Missing API credentials',
-                hasApiKey: !!this.apiKey,
-                hasCxId: !!this.cxId
-            };
-        }
-
-        try {
-            const results = await this.performSearch('test', 1);
-            return {
-                success: true,
-                resultCount: results ? results.length : 0
-            };
-        } catch (error) {
-            return {
-                success: false,
-                error: error.message
-            };
-        }
-    }
+   
 } 

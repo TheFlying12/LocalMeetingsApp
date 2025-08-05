@@ -11,6 +11,22 @@ export class OpenAIService {
     }
 
     /**
+     * Clean and parse JSON response from OpenAI (removes markdown code blocks)
+     * @param {string} content - Raw content from OpenAI
+     * @returns {Object} Parsed JSON object
+     */
+    cleanAndParseJSON(content) {
+        let cleanContent = content.trim();
+        if (cleanContent.startsWith('```json')) {
+            cleanContent = cleanContent.replace(/^```json\s*/, '');
+        }
+        if (cleanContent.endsWith('```')) {
+            cleanContent = cleanContent.replace(/\s*```$/, '');
+        }
+        return JSON.parse(cleanContent.trim());
+    }
+
+    /**
      * Parse Google search results to extract council meeting information
      * @param {Array} searchResults - Array of Google search results
      * @param {string} city - City name
@@ -31,7 +47,7 @@ export class OpenAIService {
             "contactInfo": "contact information if found in snippets"
         }
         
-        Prioritize .gov sites and official municipal websites. If no specific meetings page is found, use the main city website. Be accurate and only include information that's clearly present in the search results.`;
+        Prioritize official municipal websites. If no specific meetings page is found, use the main city website. Be accurate and only include information that's clearly present in the search results.`;
 
         const userPrompt = `Search results for ${city}, ${state} council meetings:\n\n${searchResultsText}`;
 
@@ -45,8 +61,7 @@ export class OpenAIService {
             });
 
             const aiContent = response.choices[0].message.content;
-            console.log(aiContent)
-            return JSON.parse(aiContent);
+            return this.cleanAndParseJSON(aiContent);
         } catch (error) {
             console.error("Failed to parse search results with OpenAI:", error);
             return {
@@ -89,7 +104,7 @@ export class OpenAIService {
             });
 
             const aiContent = response.choices[0].message.content;
-            return JSON.parse(aiContent);
+            return this.cleanAndParseJSON(aiContent);
         } catch (error) {
             console.error("Failed to generate fallback info:", error);
             return {
@@ -146,7 +161,7 @@ export class OpenAIService {
             });
 
             const aiContent = response.choices[0].message.content;
-            return JSON.parse(aiContent);
+            return this.cleanAndParseJSON(aiContent);
         } catch (error) {
             console.error("Failed to parse agenda content:", error);
             return {
