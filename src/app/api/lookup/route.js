@@ -1,48 +1,71 @@
-import cityCouncilMap from '@/data/cityCouncilMap.json'
+import { GoogleSearchService } from '../../../lib/googleSearch.js';
+import { OpenAIService } from '../../../lib/openaiService.js';
+import { IntelligentScrapingService } from '../../../lib/intelligentScraper.js';
+
+require('dotenv').config();
+
+// Reuse service instances for better performance
+const googleSearch = new GoogleSearchService();
+const openaiService = new OpenAIService();
+const intelligentScraper = new IntelligentScrapingService();
 
 export async function GET(request) {
-    const {searchParams} = new URL(request.url)
-    const zip = searchParams.get('zip');
+    const { searchParams } = new URL(request.url);
+    const city = searchParams.get('city');
+    const state = searchParams.get('state');
 
-    console.log("ZIP received:", zip);
+    try {
+        // Step 1: Search for council websites using Google Custom Search
+        const searchResults = await googleSearch.searchCouncilMeetings(city, state);
 
-    if (!zip || zip.length < 5) {
-      console.log("Invalid ZIP format");
-      return Response.json({ error: 'Invalid ZIP format' }, { status: 400 });
+        if (searchResults.length > 0) {
+            // Step 2: Use OpenAI to analyze and structure the search results
+            const parsedResponse = await openaiService.parseSearchResults(searchResults, city, state);
+
+            let comprehensiveInfo = null;
+            
+            // Step 3: Always perform intelligent scraping if we have a URL
+            if (parsedResponse.website || parsedResponse.meetingsPage) {
+                const scrapeUrl = parsedResponse.meetingsPage || parsedResponse.website;
+                
+                try {
+                    comprehensiveInfo = await intelligentScraper.investigateCouncilWebsite(scrapeUrl, city, state);
+                } catch (scrapeError) {
+                    comprehensiveInfo = {
+                        error: "Intelligent scraping failed",
+                        fallbackInfo: scrapeError.message
+                    };
+                }
+            }
+
+            return Response.json({
+                success: true,
+                city,
+                state,
+                searchResults: parsedResponse,
+                comprehensiveInfo,
+                timestamp: new Date().toISOString()
+            });
+        } else {
+            return Response.json({
+                success: false,
+                city,
+                state, 
+                error: "No search results found",
+                searchResults: null,
+                comprehensiveInfo: null,
+                timestamp: new Date().toISOString()
+            });
+        }
+    } catch (error) {
+        return Response.json({
+            success: false,
+            city,
+            state,
+            error: error.message,
+            searchResults: null,
+            comprehensiveInfo: null,
+            timestamp: new Date().toISOString()
+        }, { status: 500 });
     }
-
-    const geoRes = await fetch(`https://api.zippopotam.us/us/${zip}`);
-    console.log("Zippopotam.us status:", geoRes.status);
-
-    if (!geoRes.ok) {
-      console.log("Zippopotam API failed for ZIP:", zip);
-      return Response.json({ error: 'ZIP not found' }, { status: 404 });
-    }
-
-    const geoData = await geoRes.json();
-    const place = geoData.places?.[0];
-    console.log(geoData)
-    const city = place["place name"];
-    const state = place["state"];
-
-    // const wikiRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${city},_${state}`);
-    // const wikiData = await wikiRes.json();
-    // const fun_fact = wikiData.extract
-
-    const cityKey = `${city}, ${state}`
-    const councilInfo = cityCouncilMap[cityKey]
-    if (!councilInfo) {
-
-
-        // return Response.json({ error: 'City not supported' }, { status: 404 });
-    }
-
-    return Response.json({
-        city,
-        state,
-        //fact: fun_fact || 'No fun fact available',
-        councilInfo
-    });
-   
-
 }
