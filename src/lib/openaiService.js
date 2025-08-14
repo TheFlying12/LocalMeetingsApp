@@ -118,37 +118,95 @@ export class OpenAIService {
     }
 
     /**
-     * Parse scraped agenda content into structured data
-     * @param {string} pageContent - Raw text content from webpage
-     * @returns {Promise<Object>} Structured agenda data
+     * Comprehensive analysis: parse search results, scrape the best URL, and extract meeting info
+     * @param {Array} searchResults - Google search results
+     * @param {string} city - City name
+     * @param {string} state - State name
+     * @param {Object} webScraper - Web scraping service instance
+     * @returns {Promise<Object>} Complete meeting information
      */
-    async parseAgendaContent(pageContent) {
-        const truncatedContent = pageContent.substring(0, 8000);
-
-        const systemPrompt = `You are an expert at parsing city council meeting agendas and documents. 
+    async analyzeAndScrape(searchResults, city, state, webScraper) {
+        // Step 1: Parse search results to find the best URL
+        const searchAnalysis = await this.parseSearchResults(searchResults, city, state);
         
-        Parse the following webpage content and extract structured information about the meeting agenda. Return a JSON object with this structure:
+        if (!searchAnalysis.website && !searchAnalysis.meetingsPage) {
+            return {
+                website: null,
+                meetingsPage: null,
+                description: "No suitable websites found in search results",
+                meetingSchedule: null,
+                nextMeeting: null,
+                location: null,
+                contactInfo: null,
+                publicParticipation: null,
+                documents: [],
+                summary: "Unable to find meeting information"
+            };
+        }
+
+        // Step 2: Scrape the best available URL
+        const targetUrl = searchAnalysis.meetingsPage || searchAnalysis.website;
+        let scrapedContent = null;
+        
+        try {
+            scrapedContent = await webScraper.scrapePageContent(targetUrl);
+        } catch (error) {
+            console.error("Scraping failed:", error);
+            return {
+                ...searchAnalysis,
+                meetingSchedule: null,
+                nextMeeting: null,
+                location: null,
+                publicParticipation: null,
+                documents: [],
+                summary: "Found website but couldn't access meeting details",
+                error: "Website scraping failed"
+            };
+        }
+
+        // Step 3: Extract comprehensive meeting information
+        const meetingInfo = await this.extractMeetingInfo(scrapedContent, city, state);
+        
+        // Step 4: Combine search results with scraped information
+        return {
+            website: searchAnalysis.website,
+            meetingsPage: searchAnalysis.meetingsPage,
+            description: searchAnalysis.description,
+            contactInfo: meetingInfo.contactInfo || searchAnalysis.contactInfo,
+            ...meetingInfo
+        };
+    }
+
+    /**
+     * Extract comprehensive meeting information from scraped content
+     * @param {string} pageContent - Raw text content from webpage
+     * @param {string} city - City name
+     * @param {string} state - State name
+     * @returns {Promise<Object>} Structured meeting information
+     */
+    async extractMeetingInfo(pageContent, city, state) {
+        const truncatedContent = pageContent.substring(0, 10000);
+
+        const systemPrompt = `You are an expert at extracting city council meeting information from websites.
+        
+        Extract comprehensive meeting information and return a JSON object with this structure:
         {
-            "meetingDate": "date of the meeting if found",
-            "meetingTime": "time of the meeting if found", 
-            "location": "meeting location if found",
-            "agendaItems": [
-                {
-                    "itemNumber": "item number or identifier",
-                    "title": "agenda item title",
-                    "description": "brief description",
-                    "type": "public hearing|discussion|vote|presentation|other"
-                }
-            ],
-            "publicComment": "information about public comment period if mentioned",
-            "contactInfo": "contact information for the meeting",
-            "documents": ["list of any mentioned documents or attachments"],
-            "summary": "brief summary of what this meeting covers"
+            "meetingSchedule": "when meetings typically occur (e.g., 'First Monday of each month at 7:00 PM')",
+            "nextMeeting": "next scheduled meeting date/time if found",
+            "location": "where meetings are held",
+            "contactInfo": "contact information (phone, email, address)",
+            "publicParticipation": "how the public can participate or attend",
+            "documents": ["array of important document links or agenda URLs found"],
+            "meetingTypes": ["types of meetings - council, planning, etc."],
+            "liveStreaming": "information about live streaming or recording if available",
+            "summary": "comprehensive summary of meeting information found"
         }
         
-        If information is not clearly present, use null for that field. Focus on accuracy over completeness.`;
+        Focus on accuracy. If information is not clearly present, use null for that field.
+        Please do not include any other text or characters besides the JSON object.`;
 
-        const userPrompt = `Please parse this city council meeting webpage content:\n\n${truncatedContent}`;
+        
+        const userPrompt = `Extract meeting information for ${city}, ${state} from this website content:\n\n${truncatedContent}`;
 
         try {
             const response = await this.client.chat.completions.create({
@@ -159,15 +217,20 @@ export class OpenAIService {
                 ],
                 temperature: 0.1
             });
-
-            const aiContent = response.choices[0].message.content;
-            return this.cleanAndParseJSON(aiContent);
+            console.log("Meeting info:", response.choices[0].message.content);
+            return this.cleanAndParseJSON(response.choices[0].message.content);
         } catch (error) {
-            console.error("Failed to parse agenda content:", error);
+            console.error("Failed to extract meeting info:", error);
             return {
-                error: "Failed to parse agenda",
-                rawContent: pageContent.substring(0, 500) + "...",
-                summary: "Could not extract structured data from this page"
+                meetingSchedule: null,
+                nextMeeting: null,
+                location: null,
+                contactInfo: null,
+                publicParticipation: null,
+                documents: [],
+                meetingTypes: [],
+                liveStreaming: null,
+                summary: "Could not extract meeting details from website content"
             };
         }
     }
