@@ -20,7 +20,7 @@ const US_STATES = [
   { code: 'WI', name: 'Wisconsin' }, { code: 'WY', name: 'Wyoming' }, { code: 'DC', name: 'District of Columbia' }
 ];
 
-export default function StateDropdown({ value, onChange, placeholder = "Select STATE" }) {
+export default function StateDropdown({ value, onChange, placeholder = "Select state" }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(0);
@@ -28,19 +28,15 @@ export default function StateDropdown({ value, onChange, placeholder = "Select S
   const inputRef = useRef(null);
 
   const filteredStates = US_STATES.filter(
-    state =>
-      state.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      state.code.toLowerCase().includes(searchTerm.toLowerCase())
+    s => s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.code.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const selectedState = US_STATES.find(state => state.code === value);
+  const selected = US_STATES.find(s => s.code === value);
 
-  // Click outside to close
+  // close on outside click
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
+    function handleClickOutside(e) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setIsOpen(false);
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -50,6 +46,7 @@ export default function StateDropdown({ value, onChange, placeholder = "Select S
     onChange(state.code);
     setIsOpen(false);
     setSearchTerm('');
+    inputRef.current?.blur();
   };
 
   const handleKeyDown = (e) => {
@@ -62,59 +59,78 @@ export default function StateDropdown({ value, onChange, placeholder = "Select S
     }
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setHighlightedIndex((prev) => (prev + 1) % filteredStates.length);
+      setHighlightedIndex((p) => (p + 1) % filteredStates.length);
     }
     if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setHighlightedIndex((prev) => (prev - 1 + filteredStates.length) % filteredStates.length);
+      setHighlightedIndex((p) => (p - 1 + filteredStates.length) % filteredStates.length);
     }
     if (e.key === 'Enter') {
       e.preventDefault();
-      handleSelect(filteredStates[highlightedIndex]);
+      if (filteredStates[highlightedIndex]) handleSelect(filteredStates[highlightedIndex]);
     }
-    if (e.key === 'Escape') {
-      setIsOpen(false);
-    }
+    if (e.key === 'Escape') setIsOpen(false);
   };
 
   return (
-    <div ref={dropdownRef} className="relative">
-      <input
-        ref={inputRef}
-        type="text"
-        value={isOpen ? searchTerm : selectedState?.name || ''}
-        onChange={(e) => {
-          setSearchTerm(e.target.value);
-          setIsOpen(true);
-        }}
-        onKeyDown={handleKeyDown}
-        onFocus={() => setIsOpen(true)}
-        placeholder={placeholder}
-        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
-        autoComplete="off"
-      />
+    <div ref={dropdownRef} className="relative w-full">
+      <div className="relative">
+        <input
+          ref={inputRef}
+          type="text"
+          value={isOpen ? searchTerm : (selected?.name || '')}
+          onChange={(e) => { setSearchTerm(e.target.value); setIsOpen(true); }}
+          onKeyDown={handleKeyDown}
+          onFocus={() => setIsOpen(true)}
+          placeholder={placeholder}
+          aria-expanded={isOpen}
+          aria-haspopup="listbox"
+          aria-label="State"
+          className="w-full min-w-60 rounded-md border border-gray-300 px-4 py-3 pr-10 text-base focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-smooth"
+          autoComplete="off"
+        />
+        {/* Clear / Chevron */}
+        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+          <svg className={`h-4 w-4 transition ${isOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
+            <path d="M5.23 7.21a.75.75 0 011.06.02L10 11.085l3.71-3.855a.75.75 0 111.08 1.04l-4.24 4.4a.75.75 0 01-1.08 0l-4.24-4.4a.75.75 0 01.02-1.06z" />
+          </svg>
+        </div>
+        {selected && !isOpen && (
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            className="absolute inset-y-0 right-7 my-1 inline-flex items-center rounded-md px-1.5 text-gray-500 hover:bg-gray-100 transition-smooth"
+            aria-label="Clear selected state"
+          >
+            ×
+          </button>
+        )}
+      </div>
+
       {isOpen && (
         <div
-          className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg overflow-y-auto"
-          style={{ maxHeight: `${5 * 42}px` }} // ~42px per item × 5 visible
+          role="listbox"
+          className="absolute z-50 mt-1 w-full min-w-60 overflow-y-auto rounded-lg border border-gray-300 bg-white shadow-md"
+          style={{ maxHeight: `${5 * 44}px` }}
         >
           {filteredStates.length > 0 ? (
-            filteredStates.map((state, index) => (
+            filteredStates.map((s, idx) => (
               <div
-                key={state.code}
-                onClick={() => handleSelect(state)}
-                className={`px-4 py-2 cursor-pointer ${
-                  index === highlightedIndex ? 'bg-blue-100' : 'hover:bg-gray-100'
-                }`}
+                role="option"
+                aria-selected={value === s.code}
+                key={s.code}
+                onMouseEnter={() => setHighlightedIndex(idx)}
+                onClick={() => handleSelect(s)}
+                className={`cursor-pointer px-4 py-3 transition-smooth ${
+                  idx === highlightedIndex ? 'bg-blue-100 text-blue-900' : 'hover:bg-gray-100'
+                } flex items-center justify-between`}
               >
-                <div className="flex justify-between">
-                  <span>{state.name}</span>
-                  <span className="text-gray-500 text-sm">{state.code}</span>
-                </div>
+                <span>{s.name}</span>
+                <span className="text-gray-500 text-sm">{s.code}</span>
               </div>
             ))
           ) : (
-            <div className="px-4 py-2 text-gray-500 text-sm">No states found</div>
+            <div className="px-4 py-3 text-sm text-gray-500">No states found</div>
           )}
         </div>
       )}
